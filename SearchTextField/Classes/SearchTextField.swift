@@ -48,6 +48,11 @@ open class SearchTextField: UITextField {
         filterDataSource = items
     }
     
+    open func setMinimumCharacterCount(of characters:Int, withSearchSuggestion suggestion:String? = nil ) {
+        self.minCharactersCount = characters
+        self.minCharactersSuggestion = suggestion
+    }
+    
     /// Set an array of strings to be used for suggestions
     open func filterStrings(_ strings: [String]) {
         var items = [SearchTextFieldItem]()
@@ -82,6 +87,10 @@ open class SearchTextField: UITextField {
         self.rightViewMode = .never
         indicator.stopAnimating()
     }
+    
+    open var minCharactersCount:Int = 0
+    
+    open var minCharactersSuggestion:String? = nil
     
     /// When InlineMode is true, the suggestions appear in the same line than the entered string. It's useful for email domains suggestion for example.
     open var inlineMode: Bool = false {
@@ -478,11 +487,31 @@ extension SearchTextField: UITableViewDelegate, UITableViewDataSource {
         tableView.isHidden = !interactedWith || (filteredResults.count == 0)
         shadowView?.isHidden = !interactedWith || (filteredResults.count == 0)
         
+        if self.minCharactersCount > 0 {
+            if let text = self.text {
+                if let _ = self.minCharactersSuggestion {
+                    return 1
+                }
+                else if text.characters.count < minCharactersCount {
+                    return 0
+                }
+
+            }
+
+        }
+        
         if maxNumberOfResults > 0 {
             return min(filteredResults.count, maxNumberOfResults)
         } else {
             return filteredResults.count
         }
+    }
+    
+    fileprivate func needsSuggestion() -> Bool {
+        guard let text = self.text, let _ = self.minCharactersSuggestion else {
+            return false
+        }
+        return self.minCharactersCount > 0 && text.characters.count < minCharactersCount
     }
     
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -500,12 +529,23 @@ extension SearchTextField: UITableViewDelegate, UITableViewDataSource {
         cell!.textLabel?.textColor = theme.fontColor
         cell!.detailTextLabel?.textColor = theme.fontColor
         
-        cell!.textLabel?.text = filteredResults[(indexPath as NSIndexPath).row].title
-        cell!.detailTextLabel?.text = filteredResults[(indexPath as NSIndexPath).row].subtitle
-        cell!.textLabel?.attributedText = filteredResults[(indexPath as NSIndexPath).row].attributedTitle
-        cell!.detailTextLabel?.attributedText = filteredResults[(indexPath as NSIndexPath).row].attributedSubtitle
+        var searchItem:SearchTextFieldItem!
         
-        cell!.imageView?.image = filteredResults[(indexPath as NSIndexPath).row].image
+        if needsSuggestion()  {
+            searchItem = SearchTextFieldItem(title: self.minCharactersSuggestion!)
+            searchItem.attributedTitle = NSMutableAttributedString(string: searchItem.title)
+        }
+        else {
+            searchItem = filteredResults[(indexPath as NSIndexPath).row]
+        }
+
+        
+        cell!.textLabel?.text = searchItem.title
+        cell!.detailTextLabel?.text = searchItem.subtitle
+        cell!.textLabel?.attributedText = searchItem.attributedTitle
+        cell!.detailTextLabel?.attributedText = searchItem.attributedSubtitle
+        
+        cell!.imageView?.image = searchItem.image
         
         cell!.selectionStyle = .none
         
