@@ -1,3 +1,4 @@
+
 //
 //  SearchTextField.swift
 //  SearchTextField
@@ -91,6 +92,8 @@ open class SearchTextField: UITextField {
     open var minCharactersCount:Int = 0
     
     open var minCharactersSuggestion:String? = nil
+    
+    open var noResultsText:String? = nil
     
     /// When InlineMode is true, the suggestions appear in the same line than the entered string. It's useful for email domains suggestion for example.
     open var inlineMode: Bool = false {
@@ -484,27 +487,42 @@ open class SearchTextField: UITextField {
 
 extension SearchTextField: UITableViewDelegate, UITableViewDataSource {
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        tableView.isHidden = !interactedWith || (filteredResults.count == 0)
-        shadowView?.isHidden = !interactedWith || (filteredResults.count == 0)
+        tableView.isHidden = !interactedWith ||  !needsSuggestion()
+        shadowView?.isHidden = !interactedWith || !needsSuggestion()
         
-        if self.minCharactersCount > 0 {
-            if let text = self.text {
-                if let _ = self.minCharactersSuggestion {
-                    return 1
-                }
-                else if text.characters.count < minCharactersCount {
-                    return 0
-                }
-
+        if !didReachMinCharacterCount() {
+            if needsSuggestion() {
+                return 1
             }
-
+            return 0
+        }
+        else if needsNoResultsText() {
+            tableView.isHidden = false
+                return 1
         }
         
+        tableView.isHidden = false
         if maxNumberOfResults > 0 {
             return min(filteredResults.count, maxNumberOfResults)
         } else {
             return filteredResults.count
         }
+    }
+    
+    fileprivate func didReachMinCharacterCount() -> Bool {
+        guard let text = self.text else {
+            return false
+        }
+        return text.characters.count >= minCharactersCount
+    }
+    
+    fileprivate func needsNoResultsText() -> Bool {
+        
+        guard self.noResultsText != nil, let text = self.text else {
+            return false
+        }
+
+        return self.minCharactersCount > 0 && text.characters.count >= minCharactersCount && filteredResults.count == 0
     }
     
     fileprivate func needsSuggestion() -> Bool {
@@ -533,6 +551,10 @@ extension SearchTextField: UITableViewDelegate, UITableViewDataSource {
         
         if needsSuggestion()  {
             searchItem = SearchTextFieldItem(title: self.minCharactersSuggestion!)
+            searchItem.attributedTitle = NSMutableAttributedString(string: searchItem.title)
+        }
+        else if needsNoResultsText() {
+            searchItem = SearchTextFieldItem(title: self.noResultsText!)
             searchItem.attributedTitle = NSMutableAttributedString(string: searchItem.title)
         }
         else {

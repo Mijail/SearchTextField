@@ -37,12 +37,28 @@ class MainViewController: UITableViewController {
     // 1 - Configure a simple search text view
     fileprivate func configureSimpleSearchTextField() {
         // Start visible - Default: false
-        countryTextField.startVisible = true
-
+        countryTextField.startVisible = false
+        countryTextField.setMinimumCharacterCount(of: 3, withSearchSuggestion: "Please search more madafaca")
+        countryTextField.noResultsText = "No results found"
         
         // Set data source
         let countries = localCountries()
-        countryTextField.filterStrings(countries)
+        
+        countryTextField.showLoadingIndicator()
+        
+        if #available(iOS 10.0, *) {
+            let _ = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { (timer) in
+                self.countryTextField.filterStrings(countries)
+                self.countryTextField.stopLoadingIndicator()
+            }
+        } else {
+            // Fallback on earlier versions
+        }
+        
+    }
+    
+    func loadPlaces() {
+        
     }
     
     
